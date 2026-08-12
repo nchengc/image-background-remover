@@ -1,0 +1,42 @@
+sequenceDiagram
+    autonumber
+    actor U as 用户
+    participant Upl as Uploader
+    participant App as App/useRemoveBg
+    participant Fn as /api/remove-bg (CF Function)
+    participant SP as Semaphore(≤2)
+    participant AZ as AliyunProvider
+    participant API as 阿里云分割API
+
+    U->>Upl: 拖拽/点击/粘贴图片
+    Upl->>App: onFile(file)（前端已校验类型/大小）
+    App->>App: SUBMIT → status=loading（禁用提交）
+    App->>Fn: POST /api/remove-bg (multipart image)
+    Fn->>Fn: CORS 头 + 二次校验
+    Fn->>SP: acquire()
+    alt 并发已满(≥2)
+        SP-->>Fn: reject 429 RATE_LIMITED
+        Fn-->>App: 429 JSON{code:RATE_LIMITED,retryable:true}
+        App->>App: FAIL → status=error（重试按钮）
+    else 获得配额
+        SP-->>Fn: ok
+        Fn->>AZ: ensureToken()（缓存/提前刷新）
+        AZ->>API: CreateToken（必要时）
+        API-->>AZ: token
+        Fn->>AZ: remove(buffer)
+        AZ->>API: SegmentCommonImage(access_token)
+        alt >30s 未回
+            Fn->>Fn: Promise.race 超时 → TIMEOUT(504)
+        else 正常
+            API-->>AZ: ImageURL(透明PNG)
+            AZ->>API: fetch(ImageURL)
+            API-->>AZ: PNG 字节
+            AZ-->>Fn: RemoveBgOutput.pngBuffer
+        end
+        Fn->>Fn: 组装 image/png 二进制响应
+        Fn->>SP: release()
+        Fn-->>App: 200 image/png (blob)
+        App->>App: SUCCESS → status=done（objectURL 预览/下载）
+        App->>U: 棋盘格预览 + 下载按钮
+    end
+    Note over U,App: 任意失败分支均进入 error 态，重试复用 lastFile，不白屏
