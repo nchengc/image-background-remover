@@ -1,0 +1,11 @@
+# 本地联调用：复制为 .dev.vars（该文件已在 .gitignore 中，不会提交）
+# REMOVE_BG_API_KEY 从 https://www.remove.bg/dashboard#api-key 获取
+REMOVE_BG_API_KEY=your_remove_bg_api_key_here
+
+# 以下为可选覆盖项，默认值见 wrangler.toml
+PROVIDER=removebg
+MAX_CONCURRENCY=2
+PROVIDER_TIMEOUT_MS=30000
+ALLOWED_MAX_MB=10
+ALLOWED_TYPES=image/jpeg,image/png,image/webp
+REMOVE_BG_SIZE=auto
