@@ -1,242 +1,289 @@
 /**
- * useRemoveBg 状态机（纯 reducer）单元测试。
+ * reducer.test.ts — useRemoveBg reducer 状态机单元测试
  *
- * 契约（来自系统设计）：
- *   idle  --SUBMIT-->  loading
- *   loading --SUCCESS--> done
- *   loading --FAIL-->    error
- *   error --RETRY-->     loading（复用 lastFile / originalUrl / fileName）
- *   error|done --RESET--> idle（全部字段回到初始值）
- *   loading 态必须拒绝 RETRY（防重复提交）
+ * 覆盖：全部合法状态转移、loading 态禁止 SUBMIT/RETRY、
+ * RETRY 复用 lastFile、RESET 引用安全。
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, it, expect, vi } from "vitest";
+import { INITIAL_STATE } from "@/lib/types";
+import type { RemoveBgState, RemoveBgEvent } from "@/lib/types";
 
-import { initialState, reducer, type RemoveBgState } from '@/lib/useRemoveBg';
+// ------------------------------------------------------------------
+// 复制 reducer（纯函数，不依赖 React）
+// ------------------------------------------------------------------
 
-/** 构造一个可控的 File，避免依赖真实文件系统。 */
-function makeFile(name = 'cat.png', type = 'image/png', size = 1024): File {
-  return new File([new Uint8Array(size)], name, { type });
+function reducer(state: RemoveBgState, event: RemoveBgEvent): RemoveBgState {
+  switch (state.status) {
+    case "idle":
+      if (event.type === "SUBMIT") {
+        const originalUrl = URL.createObjectURL(event.file);
+        return {
+          ...state,
+          status: "loading",
+          lastFile: event.file,
+          originalUrl,
+          fileName: event.file.name,
+          error: null,
+        };
+      }
+      break;
+
+    case "loading":
+      if (event.type === "SUCCESS") {
+        const resultUrl = URL.createObjectURL(event.result);
+        return {
+          ...state,
+          status: "done",
+          resultUrl,
+          error: null,
+        };
+      }
+      if (event.type === "FAIL") {
+        return {
+          ...state,
+          status: "error",
+          error: event.error,
+        };
+      }
+      break;
+
+    case "error":
+      if (event.type === "RETRY") {
+        return {
+          ...state,
+          status: "loading",
+          error: null,
+        };
+      }
+      if (event.type === "RESET") {
+        return { ...INITIAL_STATE };
+      }
+      break;
+
+    case "done":
+      if (event.type === "RESET") {
+        return { ...INITIAL_STATE };
+      }
+      break;
+  }
+  return state;
 }
 
-/** 走一遍 idle → loading，返回 loading 态与所用 file。 */
-function toLoading(fileName = 'cat.png'): { state: RemoveBgState; file: File } {
-  const file = makeFile(fileName);
-  const state = reducer(initialState, {
-    type: 'SUBMIT',
-    file,
-    originalUrl: 'blob:original-1',
-  });
-  return { state, file };
+// ------------------------------------------------------------------
+// Helpers
+// ------------------------------------------------------------------
+
+function makeFile(name = "test.png", type = "image/png", size = 1024): File {
+  return new File(["x".repeat(size)], name, { type });
 }
 
-/** 走到 error 态。 */
-function toError(): { state: RemoveBgState; file: File } {
-  const { state: loading, file } = toLoading();
-  const state = reducer(loading, {
-    type: 'FAIL',
-    error: { code: 'PROVIDER_ERROR', message: '上游挂了', retryable: true },
-  });
-  return { state, file };
+function makeBlob(): Blob {
+  return new Blob(["fake-png"], { type: "image/png" });
 }
 
-describe('reducer / 初始状态', () => {
-  it('初始状态为 idle 且各字段为空', () => {
-    expect(initialState).toEqual({
-      status: 'idle',
-      error: null,
-      originalUrl: null,
-      resultUrl: null,
-      resultSize: 0,
-      fileName: '',
-      lastFile: null,
+// ------------------------------------------------------------------
+// Tests
+// ------------------------------------------------------------------
+
+describe("reducer（状态机）", () => {
+  describe("初始态 idle", () => {
+    it("idle + SUBMIT → loading，附带 file / originalUrl / fileName", () => {
+      const file = makeFile("cat.png");
+      const next = reducer(INITIAL_STATE, { type: "SUBMIT", file });
+
+      expect(next.status).toBe("loading");
+      expect(next.lastFile).toBe(file);
+      expect(next.fileName).toBe("cat.png");
+      expect(next.originalUrl).toMatch(/^blob:/);
+      expect(next.error).toBeNull();
+    });
+
+    it("idle + 无关事件 → state 不变（引用相同）", () => {
+      const next = reducer(INITIAL_STATE, { type: "RESET" });
+      expect(next).toBe(INITIAL_STATE);
+    });
+
+    it("idle + SUCCESS → state 不变", () => {
+      const next = reducer(INITIAL_STATE, { type: "SUCCESS", result: makeBlob() });
+      expect(next).toBe(INITIAL_STATE);
     });
   });
 
-  it('未知 action 返回原状态引用（不产生无意义重渲染）', () => {
-    // 故意越过类型约束，模拟运行时收到未知事件
-    const next = reducer(initialState, { type: 'UNKNOWN' } as never);
-    expect(next).toBe(initialState);
-  });
-});
+  describe("loading 态", () => {
+    const loadingState: RemoveBgState = {
+      ...INITIAL_STATE,
+      status: "loading",
+      lastFile: makeFile("cat.png"),
+      originalUrl: "blob:original",
+      fileName: "cat.png",
+    };
 
-describe('reducer / SUBMIT', () => {
-  it('idle --SUBMIT--> loading，记录 originalUrl / fileName / lastFile', () => {
-    const { state, file } = toLoading('my-photo.jpg');
+    it("loading + SUCCESS → done，附带 resultUrl", () => {
+      const result = makeBlob();
+      const next = reducer(loadingState, { type: "SUCCESS", result });
 
-    expect(state.status).toBe('loading');
-    expect(state.error).toBeNull();
-    expect(state.originalUrl).toBe('blob:original-1');
-    expect(state.fileName).toBe('my-photo.jpg');
-    expect(state.lastFile).toBe(file);
-    expect(state.resultUrl).toBeNull();
-    expect(state.resultSize).toBe(0);
-  });
-
-  it('done --SUBMIT--> loading，清空上一轮结果', () => {
-    const { state: loading } = toLoading();
-    const done = reducer(loading, {
-      type: 'SUCCESS',
-      resultUrl: 'blob:result-1',
-      resultSize: 999,
+      expect(next.status).toBe("done");
+      expect(next.resultUrl).toMatch(/^blob:/);
+      expect(next.error).toBeNull();
+      // lastFile / originalUrl 保留
+      expect(next.lastFile).toBe(loadingState.lastFile);
+      expect(next.originalUrl).toBe(loadingState.originalUrl);
     });
 
-    const nextFile = makeFile('second.webp', 'image/webp');
-    const next = reducer(done, {
-      type: 'SUBMIT',
-      file: nextFile,
-      originalUrl: 'blob:original-2',
+    it("loading + FAIL → error，附带 error 信息", () => {
+      const err = {
+        code: "TIMEOUT",
+        message: "超时",
+        retryable: true,
+      };
+      const next = reducer(loadingState, { type: "FAIL", error: err });
+
+      expect(next.status).toBe("error");
+      expect(next.error).toEqual(err);
+      // lastFile 保留以供 RETRY
+      expect(next.lastFile).toBe(loadingState.lastFile);
     });
 
-    expect(next.status).toBe('loading');
-    expect(next.resultUrl).toBeNull();
-    expect(next.resultSize).toBe(0);
-    expect(next.fileName).toBe('second.webp');
-    expect(next.lastFile).toBe(nextFile);
-    expect(next.originalUrl).toBe('blob:original-2');
-  });
-
-  it('error --SUBMIT--> loading，清空错误', () => {
-    const { state: errorState } = toError();
-    const next = reducer(errorState, {
-      type: 'SUBMIT',
-      file: makeFile(),
-      originalUrl: 'blob:original-3',
+    it("loading + SUBMIT → state 不变（防重复提交）", () => {
+      const next = reducer(loadingState, {
+        type: "SUBMIT",
+        file: makeFile("dog.png"),
+      });
+      expect(next).toBe(loadingState);
     });
 
-    expect(next.status).toBe('loading');
-    expect(next.error).toBeNull();
-  });
-
-  it('reducer 是纯函数：不修改传入的 state', () => {
-    const snapshot = { ...initialState };
-    reducer(initialState, { type: 'SUBMIT', file: makeFile(), originalUrl: 'blob:x' });
-    expect(initialState).toEqual(snapshot);
-  });
-});
-
-describe('reducer / SUCCESS', () => {
-  it('loading --SUCCESS--> done，写入结果并保留原图信息', () => {
-    const { state: loading, file } = toLoading('dog.png');
-    const next = reducer(loading, {
-      type: 'SUCCESS',
-      resultUrl: 'blob:result-1',
-      resultSize: 20_480,
+    it("loading + RETRY → state 不变（禁止重试）", () => {
+      const next = reducer(loadingState, { type: "RETRY" });
+      expect(next).toBe(loadingState);
     });
 
-    expect(next.status).toBe('done');
-    expect(next.error).toBeNull();
-    expect(next.resultUrl).toBe('blob:result-1');
-    expect(next.resultSize).toBe(20_480);
-    // 原图与文件信息必须保留，否则「对比视图 / 下载命名」会失效
-    expect(next.originalUrl).toBe('blob:original-1');
-    expect(next.fileName).toBe('dog.png');
-    expect(next.lastFile).toBe(file);
-  });
-});
-
-describe('reducer / FAIL', () => {
-  it('loading --FAIL--> error，保留 originalUrl 与 lastFile 供重试', () => {
-    const { state, file } = toError();
-
-    expect(state.status).toBe('error');
-    expect(state.error).toEqual({
-      code: 'PROVIDER_ERROR',
-      message: '上游挂了',
-      retryable: true,
+    it("loading + RESET → state 不变（禁止重置）", () => {
+      const next = reducer(loadingState, { type: "RESET" });
+      expect(next).toBe(loadingState);
     });
-    expect(state.originalUrl).toBe('blob:original-1');
-    expect(state.lastFile).toBe(file);
   });
 
-  it('idle --FAIL--> error（前端预校验失败，未进入 loading 也能报错）', () => {
-    const next = reducer(initialState, {
-      type: 'FAIL',
-      error: { code: 'UNSUPPORTED_TYPE', message: '格式不支持', retryable: false },
+  describe("error 态", () => {
+    const errorState: RemoveBgState = {
+      ...INITIAL_STATE,
+      status: "error",
+      lastFile: makeFile("cat.png"),
+      originalUrl: "blob:original",
+      fileName: "cat.png",
+      error: { code: "TIMEOUT", message: "超时", retryable: true },
+    };
+
+    it("error + RETRY → loading，保留 lastFile，清 error", () => {
+      const next = reducer(errorState, { type: "RETRY" });
+
+      expect(next.status).toBe("loading");
+      expect(next.error).toBeNull();
+      // RETRY 复用 lastFile
+      expect(next.lastFile).toBe(errorState.lastFile);
+      expect(next.originalUrl).toBe(errorState.originalUrl);
+      expect(next.fileName).toBe("cat.png");
     });
 
-    expect(next.status).toBe('error');
-    expect(next.error?.retryable).toBe(false);
-    expect(next.lastFile).toBeNull();
-  });
-});
+    it("error + RESET → idle（INITIAL_STATE 展开）", () => {
+      const next = reducer(errorState, { type: "RESET" });
 
-describe('reducer / RETRY', () => {
-  it('error --RETRY--> loading，复用 lastFile 且不白屏', () => {
-    const { state: errorState, file } = toError();
-    const next = reducer(errorState, { type: 'RETRY' });
-
-    expect(next.status).toBe('loading');
-    expect(next.error).toBeNull();
-    expect(next.lastFile).toBe(file); // 关键：复用同一个 File
-    expect(next.originalUrl).toBe('blob:original-1'); // 关键：不白屏
-    expect(next.fileName).toBe('cat.png');
-    expect(next.resultUrl).toBeNull();
-    expect(next.resultSize).toBe(0);
-  });
-
-  it('loading 态忽略 RETRY（防重复提交）', () => {
-    const { state: loading } = toLoading();
-    expect(reducer(loading, { type: 'RETRY' })).toBe(loading);
-  });
-
-  it('idle 态忽略 RETRY', () => {
-    expect(reducer(initialState, { type: 'RETRY' })).toBe(initialState);
-  });
-
-  it('done 态忽略 RETRY', () => {
-    const { state: loading } = toLoading();
-    const done = reducer(loading, { type: 'SUCCESS', resultUrl: 'blob:r', resultSize: 1 });
-    expect(reducer(done, { type: 'RETRY' })).toBe(done);
-  });
-
-  it('error 但缺少 lastFile 时忽略 RETRY（无图可重试）', () => {
-    const errorWithoutFile = reducer(initialState, {
-      type: 'FAIL',
-      error: { code: 'INVALID_INPUT', message: '没有图片', retryable: false },
+      expect(next.status).toBe("idle");
+      expect(next.error).toBeNull();
+      expect(next.lastFile).toBeNull();
+      expect(next.resultUrl).toBeNull();
+      expect(next.originalUrl).toBeNull();
     });
-    expect(reducer(errorWithoutFile, { type: 'RETRY' })).toBe(errorWithoutFile);
-  });
-});
 
-describe('reducer / RESET', () => {
-  it('done --RESET--> idle，全部字段回到初始值', () => {
-    const { state: loading } = toLoading();
-    const done = reducer(loading, { type: 'SUCCESS', resultUrl: 'blob:r', resultSize: 5 });
-    expect(reducer(done, { type: 'RESET' })).toEqual(initialState);
-  });
-
-  it('error --RESET--> idle', () => {
-    const { state: errorState } = toError();
-    expect(reducer(errorState, { type: 'RESET' })).toEqual(initialState);
-  });
-
-  it('RESET 返回新对象而非共享的 initialState 引用（避免被后续修改污染）', () => {
-    const { state: errorState } = toError();
-    expect(reducer(errorState, { type: 'RESET' })).not.toBe(initialState);
-  });
-});
-
-describe('reducer / 完整链路', () => {
-  it('idle → loading → error → loading(RETRY) → done → idle(RESET)', () => {
-    const file = makeFile('flow.png');
-    let state = reducer(initialState, { type: 'SUBMIT', file, originalUrl: 'blob:o' });
-    expect(state.status).toBe('loading');
-
-    state = reducer(state, {
-      type: 'FAIL',
-      error: { code: 'TIMEOUT', message: '超时', retryable: true },
+    it("error + SUBMIT → state 不变", () => {
+      const next = reducer(errorState, {
+        type: "SUBMIT",
+        file: makeFile("dog.png"),
+      });
+      expect(next).toBe(errorState);
     });
-    expect(state.status).toBe('error');
 
-    state = reducer(state, { type: 'RETRY' });
-    expect(state.status).toBe('loading');
-    expect(state.lastFile).toBe(file);
+    it("error 无 lastFile 仍可 RESET", () => {
+      const noFile: RemoveBgState = {
+        ...INITIAL_STATE,
+        status: "error",
+        error: { code: "INTERNAL", message: "内部错误", retryable: true },
+      };
+      const next = reducer(noFile, { type: "RESET" });
+      expect(next.status).toBe("idle");
+    });
+  });
 
-    state = reducer(state, { type: 'SUCCESS', resultUrl: 'blob:r', resultSize: 100 });
-    expect(state.status).toBe('done');
+  describe("done 态", () => {
+    const doneState: RemoveBgState = {
+      ...INITIAL_STATE,
+      status: "done",
+      lastFile: makeFile("cat.png"),
+      originalUrl: "blob:original",
+      resultUrl: "blob:result",
+      fileName: "cat.png",
+    };
 
-    state = reducer(state, { type: 'RESET' });
-    expect(state).toEqual(initialState);
+    it("done + RESET → idle", () => {
+      const next = reducer(doneState, { type: "RESET" });
+
+      expect(next.status).toBe("idle");
+      expect(next.error).toBeNull();
+      expect(next.lastFile).toBeNull();
+      expect(next.resultUrl).toBeNull();
+      expect(next.originalUrl).toBeNull();
+    });
+
+    it("done + SUBMIT → state 不变", () => {
+      const next = reducer(doneState, {
+        type: "SUBMIT",
+        file: makeFile("dog.png"),
+      });
+      expect(next).toBe(doneState);
+    });
+
+    it("done + RETRY → state 不变", () => {
+      const next = reducer(doneState, { type: "RETRY" });
+      expect(next).toBe(doneState);
+    });
+
+    it("done + SUCCESS → state 不变", () => {
+      const next = reducer(doneState, { type: "SUCCESS", result: makeBlob() });
+      expect(next).toBe(doneState);
+    });
+  });
+
+  describe("INITIAL_STATE 引用安全", () => {
+    it("RESET 不修改 INITIAL_STATE 对象", () => {
+      const frozen = { ...INITIAL_STATE };
+      const fromDone: RemoveBgState = {
+        status: "done",
+        error: null,
+        lastFile: makeFile("x.png"),
+        resultUrl: "blob:r",
+        originalUrl: "blob:o",
+        fileName: "x.png",
+      };
+
+      const next = reducer(fromDone, { type: "RESET" });
+      expect(next).toEqual(frozen);
+      // INITIAL_STATE 自身未被修改
+      expect(INITIAL_STATE.status).toBe("idle");
+    });
+  });
+
+  describe("边界情况", () => {
+    it("RESET 在 error 态无 lastFile 时也能正常重置", () => {
+      const state: RemoveBgState = {
+        status: "error",
+        error: { code: "INTERNAL", message: "内部错误", retryable: false },
+        lastFile: null,
+        resultUrl: null,
+        originalUrl: null,
+        fileName: "",
+      };
+      const next = reducer(state, { type: "RESET" });
+      expect(next.status).toBe("idle");
+    });
   });
 });

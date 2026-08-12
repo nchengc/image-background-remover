@@ -1,160 +1,157 @@
 /**
- * 结果区：棋盘格预览 + 原图/结果切换 + 并排对比 + 透明 PNG 下载。
+ * ResultView — 去背结果预览 + 下载组件。
  *
- * 透明度可见性依赖 preview.ts 的 checkerboardStyle；
- * 下载使用原生 <a download>，直接指向结果 blob URL，完整保留 alpha 通道。
+ * 三视图切换：「去背景」「原图」「对比」
+ * 棋盘格 CSS 透出 alpha 通道。
+ * <a download> 原生下载保留透明通道。
  */
 
-import { useMemo, useState } from 'react';
+"use client";
 
-import { buildDownloadFileName, checkerboardStyle, formatFileSize } from '@/lib/preview';
-
-type ViewMode = 'result' | 'original' | 'compare';
+import { useState, useMemo } from "react";
+import { checkerboardStyle, buildDownloadFileName } from "@/lib/preview";
 
 export interface ResultViewProps {
-  /** 结果图（透明 PNG）的 objectURL。 */
+  /** 结果图 objectURL（透明 PNG blob） */
   resultUrl: string;
-  /** 原图 objectURL，可能为空（例如刷新后仅剩结果）。 */
+  /** 原图 objectURL（可能为 null） */
   originalUrl: string | null;
-  /** 原始文件名，用于生成下载名。 */
+  /** 原始文件名 */
   fileName: string;
-  /** 结果体积（字节）。 */
-  resultSize: number;
-  /** 再处理一张。 */
+  /** 回到 idle 回调 */
   onReset: () => void;
 }
 
-const MODE_LABELS: Array<{ value: ViewMode; label: string }> = [
-  { value: 'result', label: '去背景' },
-  { value: 'original', label: '原图' },
-  { value: 'compare', label: '对比' },
-];
+type ViewMode = "result" | "original" | "compare";
 
 export default function ResultView({
   resultUrl,
   originalUrl,
   fileName,
-  resultSize,
   onReset,
 }: ResultViewProps) {
-  const [mode, setMode] = useState<ViewMode>('result');
+  const [viewMode, setViewMode] = useState<ViewMode>("result");
 
-  const downloadName = useMemo(() => buildDownloadFileName(fileName), [fileName]);
-  const modes = useMemo(
-    () => (originalUrl ? MODE_LABELS : MODE_LABELS.filter((item) => item.value === 'result')),
-    [originalUrl],
+  const downloadName = useMemo(
+    () => buildDownloadFileName(fileName),
+    [fileName]
   );
 
-  // 原图缺失时强制回落到结果视图，避免空白画面。
-  const effectiveMode: ViewMode = originalUrl ? mode : 'result';
+  const hasOriginal = originalUrl !== null;
 
   return (
-    <section className="animate-fade-in space-y-5">
-      {/* 视图切换 */}
-      {modes.length > 1 ? (
-        <div
-          role="tablist"
-          aria-label="预览模式"
-          className="mx-auto flex w-full max-w-xs rounded-xl border border-slate-700 bg-slate-900/60 p-1"
-        >
-          {modes.map((item) => {
-            const isActive = effectiveMode === item.value;
-            return (
-              <button
-                key={item.value}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setMode(item.value)}
-                className={[
-                  'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition',
-                  isActive ? 'bg-brand-500 text-white shadow-card' : 'text-slate-300 hover:text-white',
-                ].join(' ')}
-              >
-                {item.label}
-              </button>
-            );
-          })}
+    <div className="flex flex-col items-center gap-4 w-full">
+      {/* ---- 视图切换器 ---- */}
+      {hasOriginal && (
+        <div className="flex rounded-lg bg-gray-100 p-0.5" role="tablist">
+          {(
+            [
+              ["result", "去背景"],
+              ["original", "原图"],
+              ["compare", "对比"],
+            ] as [ViewMode, string][]
+          ).map(([mode, label]) => (
+            <button
+              key={mode}
+              role="tab"
+              aria-selected={viewMode === mode}
+              onClick={() => setViewMode(mode)}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400
+                ${viewMode === mode
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+                }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-      ) : null}
-
-      {/* 预览区 */}
-      {effectiveMode === 'compare' && originalUrl ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <PreviewCard title="原图" src={originalUrl} alt="原始图片" checker={false} />
-          <PreviewCard title="去背景" src={resultUrl} alt="去除背景后的透明 PNG" checker />
-        </div>
-      ) : (
-        <PreviewCard
-          title={effectiveMode === 'original' ? '原图' : '去背景'}
-          src={effectiveMode === 'original' && originalUrl ? originalUrl : resultUrl}
-          alt={effectiveMode === 'original' ? '原始图片' : '去除背景后的透明 PNG'}
-          checker={effectiveMode !== 'original'}
-        />
       )}
 
-      {/* 结果信息 */}
-      <p className="text-center text-xs text-slate-500">
-        {downloadName}
-        {resultSize > 0 ? ` · ${formatFileSize(resultSize)}` : ''} · 透明底 PNG
-      </p>
+      {/* ---- 预览区 ---- */}
+      <div className="w-full max-w-[720px]">
+        {viewMode === "result" && (
+          <div
+            className="w-full rounded-xl overflow-hidden border border-gray-200 flex items-center justify-center p-4"
+            style={{ background: checkerboardStyle() }}
+          >
+            <img
+              src={resultUrl}
+              alt="去背景结果"
+              className="max-w-full max-h-[60vh] object-contain"
+            />
+          </div>
+        )}
 
-      {/* 操作区 */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+        {viewMode === "original" && originalUrl && (
+          <div className="w-full rounded-xl overflow-hidden border border-gray-200 flex items-center justify-center p-4 bg-white">
+            <img
+              src={originalUrl}
+              alt="原始图片"
+              className="max-w-full max-h-[60vh] object-contain"
+            />
+          </div>
+        )}
+
+        {viewMode === "compare" && originalUrl && (
+          <div className="flex flex-col sm:flex-row gap-2 w-full">
+            {/* 桌面：并排；移动（sm 以下）：堆叠 */}
+            <div className="flex-1 rounded-xl overflow-hidden border border-gray-200 flex flex-col items-center bg-white">
+              <p className="text-xs text-gray-400 py-1.5">原图</p>
+              <div className="flex items-center justify-center p-3 w-full">
+                <img
+                  src={originalUrl}
+                  alt="原始图片"
+                  className="max-w-full max-h-[40vh] object-contain"
+                />
+              </div>
+            </div>
+            <div className="flex-1 rounded-xl overflow-hidden border border-gray-200 flex flex-col items-center">
+              <p className="text-xs text-gray-400 py-1.5">去背景</p>
+              <div
+                className="flex items-center justify-center p-3 w-full"
+                style={{ background: checkerboardStyle() }}
+              >
+                <img
+                  src={resultUrl}
+                  alt="去背景结果"
+                  className="max-w-full max-h-[40vh] object-contain"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ---- 操作按钮 ---- */}
+      <div className="flex gap-3 flex-wrap justify-center">
+        {/* 下载按钮 */}
         <a
           href={resultUrl}
           download={downloadName}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-400 active:bg-brand-600 sm:w-auto"
+          className="px-6 py-2.5 rounded-lg bg-blue-500 text-white text-sm font-medium
+                     hover:bg-blue-600 active:bg-blue-700 transition-colors
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2
+                     no-underline inline-flex items-center gap-2"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-            className="h-4 w-4"
-          >
-            <path d="M12 4v12" />
-            <path d="m7 11 5 5 5-5" />
-            <path d="M4 20h16" />
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           下载透明 PNG
         </a>
+
+        {/* 换一张 */}
         <button
-          type="button"
           onClick={onReset}
-          className="w-full rounded-xl border border-slate-600 px-6 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-400 hover:text-white sm:w-auto"
+          className="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-600 text-sm font-medium
+                     hover:bg-gray-50 active:bg-gray-100 transition-colors
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2"
         >
-          再处理一张
+          再传一张
         </button>
       </div>
-    </section>
-  );
-}
-
-interface PreviewCardProps {
-  title: string;
-  src: string;
-  alt: string;
-  /** 是否铺棋盘格（透明区域可见）。 */
-  checker: boolean;
-}
-
-function PreviewCard({ title, src, alt, checker }: PreviewCardProps) {
-  return (
-    <figure className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/60">
-      <figcaption className="border-b border-slate-700/80 px-4 py-2 text-xs font-medium text-slate-400">
-        {title}
-      </figcaption>
-      <div
-        className="flex h-[240px] items-center justify-center p-3 sm:h-[360px]"
-        style={checker ? checkerboardStyle : undefined}
-      >
-        <img src={src} alt={alt} className="max-h-full max-w-full object-contain" />
-      </div>
-    </figure>
+    </div>
   );
 }

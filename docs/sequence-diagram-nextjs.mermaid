@@ -1,0 +1,39 @@
+sequenceDiagram
+    autonumber
+    actor U as 用户
+    participant Upl as Uploader('use client')
+    participant App as page/useRemoveBg
+    participant RH as /api/remove-bg (Route Handler)
+    participant SP as Semaphore(≤2)
+    participant RB as RemoveBgProvider
+    participant API as remove.bg API
+
+    U->>Upl: 拖拽/点击/粘贴图片
+    Upl->>App: onFile(file)（前端已校验类型/大小）
+    App->>App: SUBMIT → status=loading（禁用提交）
+    App->>RH: POST /api/remove-bg (multipart image)   %% 同源，无 CORS
+    RH->>RH: 二次校验 + 设 Cache-Control:no-store
+    RH->>SP: acquire()
+    alt 并发已满(≥2)
+        SP-->>RH: reject 429 RATE_LIMITED
+        RH-->>App: 429 JSON{code:RATE_LIMITED,retryable:true}
+        App->>App: FAIL → status=error（重试按钮）
+    else 获得配额
+        SP-->>RH: ok
+        RH->>RB: remove({buffer,mimeType,fileName})
+        RB->>API: POST api.remove.bg/v1.0/removebg (X-Api-Key, image_file, size=auto)
+        alt >30s 未回
+            RH->>RH: Promise.race 超时 → TIMEOUT(504)
+        else 正常
+            API-->>RB: PNG 字节（直返二进制）
+            RB-->>RH: RemoveBgOutput.pngBuffer
+        end
+        RH->>SP: release()
+        RH-->>App: 200 image/png (blob) + no-store
+        App->>App: SUCCESS → status=done（objectURL 预览/下载）
+        App->>U: 棋盘格预览 + 下载按钮
+    end
+    Note over U,API: 差异① 代理由 CF Pages Function → Next.js Route Handler(app/api/remove-bg/route.ts)
+    Note over RB,API: 差异② Provider 由 AliyunProvider → RemoveBgProvider(remove.bg)
+    Note over App,RH: 差异③ 前端与代理同 Next.js 项目同源，天然无 CORS；Key 仅 process.env 服务端
+    Note over RH: 差异④ 自托管 Node 下 10MB 上传体可达；Vercel 受 4.5MB 平台上限(413)约束

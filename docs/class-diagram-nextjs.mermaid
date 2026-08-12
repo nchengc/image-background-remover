@@ -1,0 +1,63 @@
+classDiagram
+    class App {
+        +status: AppStatus
+        +useRemoveBg()
+        +render()
+    }
+    class useRemoveBg {
+        -status: AppStatus
+        -lastFile: File
+        -resultUrl: string
+        +submit(file)
+        +retry()
+        +reset()
+        -callProxy(formData): Promise~Blob~
+    }
+    class Uploader {
+        +disabled: boolean
+        +onFile(file)
+        +validate(file): AppError?
+    }
+    class StatusBlock {
+        +status: AppStatus
+        +error: AppError
+        +onRetry()
+    }
+    class ResultView {
+        +resultUrl: string
+        +originalUrl: string
+        +onReset()
+        +download()
+        +toggleCompare()
+    }
+    class RemoveBgClient {
+        +post(image): Promise~Blob~
+    }
+    class BackgroundRemovalProvider {
+        <<interface>>
+        +name: string
+        +remove(input): Promise~RemoveBgOutput~
+    }
+    class RemoveBgProvider {
+        +name: string
+        +remove(input): Promise~RemoveBgOutput~
+    }
+    class RouteHandler {
+        +POST(req): Response
+        +OPTIONS(req): Response
+        -semaphore(≤2)
+        -timeout(30s)
+        -errorPassthrough()
+    }
+
+    App "1" *-- "1" useRemoveBg : 拥有
+    App o-- Uploader : 组合
+    App o-- StatusBlock : 组合
+    App o-- ResultView : 组合
+    useRemoveBg ..> RemoveBgClient : 调用
+    RemoveBgClient ..> RouteHandler : POST /api/remove-bg
+    RouteHandler ..> BackgroundRemovalProvider : 使用
+    RemoveBgProvider ..|> BackgroundRemovalProvider : 实现
+    Uploader ..> useRemoveBg : onFile→submit
+    StatusBlock ..> useRemoveBg : onRetry
+    ResultView ..> useRemoveBg : 读取 resultUrl

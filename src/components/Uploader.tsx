@@ -1,210 +1,210 @@
 /**
- * 上传区：点击选择 / 拖拽 / 粘贴（Ctrl+V）三种入口。
+ * Uploader — 图片上传组件。
  *
- * 职责边界：
- * - 只负责「拿到一个合法 File 并交给 onSelect」
- * - 非法文件在本组件内就地提示，不进入状态机，减少一次无效往返
- * - loading 期间 disabled，配合状态机的防重复提交
+ * 支持点击、拖拽、Ctrl+V 粘贴三种上传入口。
+ * 前端预校验（类型/大小），非法文件就地报错不进状态机。
+ * loading 态禁用全部入口。
  */
 
-import { useCallback, useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
+"use client";
 
-import { formatFileSize } from '@/lib/preview';
-import { ALLOWED_MAX_MB, ALLOWED_TYPES, ALLOWED_TYPES_LABEL, validateImageFile } from '@/lib/useRemoveBg';
+import { useRef, useState, useCallback, type DragEvent, type ClipboardEvent } from "react";
+import type { AppError } from "@/lib/types";
+import { ALLOWED_TYPES_STRING } from "@/lib/types";
+import { validateImageFile } from "@/lib/useRemoveBg";
 
 export interface UploaderProps {
-  /** 校验通过后回调，交给状态机的 submit。 */
-  onSelect: (file: File) => void;
-  /** 处理中时禁用所有交互。 */
-  disabled?: boolean;
+  /** 是否禁用（loading 时为 true） */
+  disabled: boolean;
+  /** 文件选择回调 */
+  onFile: (file: File) => void;
+  /** 外部错误（如 done/error 态重置后清空） */
+  error?: AppError | null;
 }
 
-export default function Uploader({ onSelect, disabled = false }: UploaderProps) {
+/**
+ * 上传组件。键盘可达，支持屏幕阅读器。
+ */
+export default function Uploader({ disabled, onFile, error }: UploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const dragDepth = useRef(0);
+  const [localError, setLocalError] = useState<AppError | null>(null);
 
-  /** 统一入口：校验 → 提示或提交。 */
+  const displayError = error ?? localError;
+
+  /** 处理文件：校验 → 成功则回调，失败则显示本地错误 */
   const handleFile = useCallback(
-    (file: File | null | undefined) => {
-      if (disabled) {
-        return;
-      }
-      if (!file) {
-        setLocalError('没有读取到图片，请重新选择');
-        return;
-      }
-      const error = validateImageFile(file);
-      if (error) {
-        setLocalError(error.message);
-        return;
-      }
+    (file: File) => {
+      if (disabled) return;
       setLocalError(null);
-      onSelect(file);
+
+      const validationError = validateImageFile(file);
+      if (validationError) {
+        setLocalError(validationError);
+        return; // 不进状态机
+      }
+
+      onFile(file);
     },
-    [disabled, onSelect],
+    [disabled, onFile]
   );
 
-  const openPicker = useCallback(() => {
-    if (disabled) {
-      return;
-    }
+  // ---- 点击 ----
+
+  const handleClick = () => {
+    if (disabled) return;
     inputRef.current?.click();
-  }, [disabled]);
+  };
 
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        openPicker();
-      }
-    },
-    [openPicker],
-  );
-
-  const handleDragEnter = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      if (disabled) {
-        return;
-      }
-      dragDepth.current += 1;
-      setIsDragging(true);
-    },
-    [disabled],
-  );
-
-  const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
-    // 必须阻止默认行为，否则浏览器会直接打开图片
-    event.preventDefault();
-  }, []);
-
-  const handleDragLeave = useCallback((event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    dragDepth.current = Math.max(0, dragDepth.current - 1);
-    if (dragDepth.current === 0) {
-      setIsDragging(false);
+  const handleInputChange = () => {
+    const files = inputRef.current?.files;
+    if (files && files.length > 0) {
+      handleFile(files[0]);
+      // 清空 value 保证同图可重选
+      inputRef.current!.value = "";
     }
-  }, []);
+  };
 
-  const handleDrop = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      dragDepth.current = 0;
-      setIsDragging(false);
-      if (disabled) {
-        return;
-      }
-      const file = event.dataTransfer?.files?.[0] ?? null;
-      handleFile(file);
-    },
-    [disabled, handleFile],
-  );
+  // ---- 拖拽 ----
 
-  // 粘贴上传：监听全局 paste，从剪贴板取第一张图片
-  useEffect(() => {
-    if (disabled) {
-      return undefined;
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (disabled) return;
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFile(files[0]);
     }
-    const onPaste = (event: ClipboardEvent) => {
-      const items = event.clipboardData?.items;
-      if (!items) {
-        return;
-      }
-      for (let index = 0; index < items.length; index += 1) {
-        const item = items[index];
-        if (item.kind === 'file' && item.type.startsWith('image/')) {
+  };
+
+  // ---- 粘贴 ----
+
+  const handlePaste = useCallback(
+    (e: ClipboardEvent) => {
+      if (disabled) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
           const file = item.getAsFile();
-          if (file) {
-            event.preventDefault();
-            handleFile(file);
-            return;
-          }
+          if (file) handleFile(file);
+          return;
         }
       }
-    };
+    },
+    [disabled, handleFile]
+  );
 
-    window.addEventListener('paste', onPaste);
-    return () => window.removeEventListener('paste', onPaste);
-  }, [disabled, handleFile]);
+  // ---- 键盘 ----
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
+  const borderColor = isDragging
+    ? "border-blue-500 bg-blue-50"
+    : displayError
+      ? "border-red-400 bg-red-50"
+      : "border-gray-300 bg-white hover:border-gray-400";
 
   return (
-    <section className="animate-fade-in">
+    <div className="w-full" onPaste={handlePaste}>
+      {/* 隐藏的文件 input */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ALLOWED_TYPES_STRING}
+        className="hidden"
+        onChange={handleInputChange}
+        disabled={disabled}
+        aria-hidden="true"
+      />
+
+      {/* 上传区域 */}
       <div
         role="button"
         tabIndex={disabled ? -1 : 0}
+        aria-label="上传图片区域，点击选择文件或拖拽图片到此处"
         aria-disabled={disabled}
-        aria-label={`上传图片，支持 ${ALLOWED_TYPES_LABEL}，最大 ${ALLOWED_MAX_MB}MB`}
-        onClick={openPicker}
+        onClick={handleClick}
         onKeyDown={handleKeyDown}
-        onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={[
-          'flex w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed px-5 py-12 text-center transition-colors sm:px-10 sm:py-16',
-          disabled ? 'cursor-not-allowed opacity-60' : 'hover:border-brand-400 hover:bg-slate-900/60',
-          isDragging ? 'border-brand-400 bg-brand-500/10' : 'border-slate-700 bg-slate-900/40',
-        ].join(' ')}
+        className={`
+          relative flex flex-col items-center justify-center
+          w-full min-h-[200px] rounded-xl border-2 border-dashed
+          transition-colors duration-200 cursor-pointer
+          select-none outline-none
+          focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2
+          ${disabled ? "opacity-50 cursor-not-allowed" : ""}
+          ${borderColor}
+        `}
       >
-        <span
+        {/* 拖拽蒙层 */}
+        {isDragging && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-blue-100/80 z-10">
+            <p className="text-blue-600 font-semibold text-lg">
+              松手上传
+            </p>
+          </div>
+        )}
+
+        {/* 图标 */}
+        <svg
+          className={`w-12 h-12 mb-3 ${displayError ? "text-red-400" : "text-gray-400"}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
           aria-hidden="true"
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-500/15 text-brand-300"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
+          <path
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="h-7 w-7"
-          >
-            <path d="M12 16V4" />
-            <path d="m7 9 5-5 5 5" />
-            <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-          </svg>
-        </span>
+            strokeWidth={1.5}
+            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
 
-        <div className="space-y-1">
-          <p className="text-base font-semibold text-slate-100 sm:text-lg">
-            点击上传，或把图片拖到这里
-          </p>
-          <p className="text-sm text-slate-400">
-            也可以直接 <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-xs">Ctrl</kbd> +{' '}
-            <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-xs">V</kbd> 粘贴截图
-          </p>
-        </div>
-
-        <p className="text-xs text-slate-500">
-          支持 {ALLOWED_TYPES_LABEL}，单张不超过 {formatFileSize(ALLOWED_MAX_MB * 1024 * 1024)}
+        {/* 提示文案 */}
+        <p className="text-gray-500 text-sm mb-1">
+          点击上传、拖拽图片到此处，或{" "}
+          <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">
+            Ctrl+V
+          </kbd>{" "}
+          粘贴
+        </p>
+        <p className="text-gray-400 text-xs">
+          支持 JPG / PNG / WEBP，最大 4MB
         </p>
 
-        <input
-          ref={inputRef}
-          type="file"
-          className="hidden"
-          accept={ALLOWED_TYPES.join(',')}
-          disabled={disabled}
-          onChange={(event) => {
-            const file = event.target.files?.[0] ?? null;
-            handleFile(file);
-            // 清空 value，保证同一文件可再次选择触发 change
-            event.target.value = '';
-          }}
-        />
+        {/* 本地校验错误 */}
+        {displayError && !isDragging && (
+          <p className="mt-3 text-red-500 text-sm font-medium" role="alert">
+            {displayError.message}
+          </p>
+        )}
       </div>
-
-      {localError ? (
-        <p
-          role="alert"
-          className="mt-3 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
-        >
-          {localError}
-        </p>
-      ) : null}
-    </section>
+    </div>
   );
 }
