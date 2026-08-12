@@ -1,0 +1,21 @@
+node_modules
+dist
+coverage
+.coverage-run1
+.wrangler
+.dev.vars
+.env
+.env.*
+*.local
+*.log
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+
+# QA / vitest 缓存
+coverage-report
+*.timestamp-*.mjs
+
+# QA / vitest 缓存
+coverage-report
+*.timestamp-*.mjs
