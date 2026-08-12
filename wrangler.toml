@@ -1,0 +1,14 @@
+name = "bg-remover"
+compatibility_date = "2024-07-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+
+# 非敏感配置放 [vars]；REMOVE_BG_API_KEY 属于密钥，
+# 本地放 .dev.vars，线上用 Cloudflare Pages → Settings → Environment variables（加密）。
+[vars]
+PROVIDER = "removebg"
+MAX_CONCURRENCY = "2"
+PROVIDER_TIMEOUT_MS = "30000"
+ALLOWED_MAX_MB = "10"
+ALLOWED_TYPES = "image/jpeg,image/png,image/webp"
+REMOVE_BG_SIZE = "auto"
