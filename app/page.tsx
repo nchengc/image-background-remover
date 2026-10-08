@@ -4,6 +4,9 @@ import { useCallback, useRef, useState } from "react";
 
 type Status = "idle" | "processing" | "done" | "error";
 
+/** remove.bg 单张上传上限约 10MB，超了直接拒绝，省一次无谓往返 */
+const MAX_BYTES = 10 * 1024 * 1024;
+
 export default function Home() {
   const [status, setStatus] = useState<Status>("idle");
   const [file, setFile] = useState<File | null>(null);
@@ -30,8 +33,17 @@ export default function Home() {
     async (f: File) => {
       clearResult();
       setFile(f);
-      setStatus("processing");
       setErrorMsg("");
+
+      if (f.size > MAX_BYTES) {
+        setErrorMsg(
+          `图片过大（${(f.size / 1024 / 1024).toFixed(1)}MB），remove.bg 单张上限约 10MB，请压缩后再试`
+        );
+        setStatus("error");
+        return;
+      }
+
+      setStatus("processing");
       try {
         const fd = new FormData();
         fd.append("image", f, f.name || "image.png");
@@ -104,7 +116,7 @@ export default function Home() {
           <input
             ref={inputRef}
             type="file"
-            accept="image/png,image/jpeg"
+            accept="image/*"
             className="hidden"
             onChange={onSelect}
           />
@@ -124,7 +136,9 @@ export default function Home() {
           <p className="mt-4 text-base font-medium text-slate-700">
             点击选择 或 拖拽图片到此处
           </p>
-          <p className="mt-1 text-xs text-slate-400">支持 PNG、JPG</p>
+          <p className="mt-1 text-xs text-slate-400">
+            支持 PNG / JPG / WebP 等常见格式 · 单张 ≤ 10MB
+          </p>
         </div>
       )}
 
@@ -160,6 +174,9 @@ export default function Home() {
               换一张
             </button>
           </div>
+          <p className="mt-4 text-center text-xs text-slate-400">
+            免费额度下 remove.bg 会把输出限制在约 25 万像素（如 577×433），原图更大时会被等比缩小
+          </p>
         </div>
       )}
 

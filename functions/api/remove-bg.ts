@@ -25,7 +25,8 @@ export async function onRequestPost(
     return json({ error: "无效的表单数据" }, 400);
   }
 
-  const image = form.get("image");
+  // 兼容 image / image_file 两种字段名，避免前后端或调试工具字段名不一致直接 400
+  const image = form.get("image") ?? form.get("image_file");
   if (!image || typeof image === "string") {
     return json({ error: "缺少 image 文件字段" }, 400);
   }
@@ -48,8 +49,9 @@ export async function onRequestPost(
   }
 
   if (!resp.ok) {
-    const detail = await resp.text();
-    return json({ error: `remove.bg 调用失败（${resp.status}）：${detail}` }, 502);
+    // 截断原文，避免把 remove.bg 的大段 HTML/JSON 直接甩给前端
+    const detail = (await resp.text()).slice(0, 200);
+    return json({ error: friendlyError(resp.status, detail) }, 502);
   }
 
   const buf = await resp.arrayBuffer();
@@ -59,6 +61,25 @@ export async function onRequestPost(
       "cache-control": "no-store",
     },
   });
+}
+
+/** 把 remove.bg 的状态码翻译成用户看得懂的中文提示 */
+function friendlyError(status: number, detail: string): string {
+  switch (status) {
+    case 400:
+      return "图片格式不受支持或文件已损坏（remove.bg 400）。请换一张 PNG / JPG 试试。";
+    case 401:
+    case 403:
+      return "remove.bg API Key 无效或已失效（401/403），请到 Cloudflare 环境变量中更新。";
+    case 402:
+      return "remove.bg 额度已用尽，或这张图超出了当前套餐的尺寸上限（402）。免费额度每月 50 张。";
+    case 429:
+      return "请求过于频繁，已被 remove.bg 限流（429），请稍后再试。";
+    case 413:
+      return "图片体积过大（413），remove.bg 单张上限约 10MB。";
+    default:
+      return `remove.bg 调用失败（${status}）：${detail}`;
+  }
 }
 
 function json(body: unknown, status: number): Response {
