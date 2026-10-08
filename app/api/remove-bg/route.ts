@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// 在 Cloudflare 上经 @opennextjs/cloudflare 以 workerd(nodejs_compat) 执行。
+// Cloudflare Pages 原生构建（next-on-pages）要求 API 路由运行在 edge 运行时
+export const runtime = "edge";
+
 // 图片全程在内存中转发，不写磁盘、不存储；密钥仅来自环境变量。
 export async function POST(req: NextRequest) {
   const apiKey = process.env.REMOVE_BG_API_KEY;
