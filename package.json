@@ -1,34 +1,31 @@
 {
-  "name": "bg-remover",
-  "private": true,
+  "name": "image-background-remover",
   "version": "0.1.0",
-  "type": "module",
-  "description": "图片去背景网站（Cloudflare Pages + remove.bg 同源代理）—— 练手项目，沉淀 Vibe Coding 项目流程",
+  "private": true,
+  "description": "图片去背景网站（Next.js + Tailwind + remove.bg，部署 Cloudflare）",
   "scripts": {
-    "dev": "vite",
-    "dev:pages": "wrangler pages dev -- npm run dev",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "deploy": "npm run build && wrangler pages deploy dist",
-    "typecheck": "tsc --noEmit"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:dev": "opennextjs-cloudflare dev",
+    "cf:deploy": "opennextjs-cloudflare build && wrangler deploy"
   },
   "dependencies": {
+    "next": "^14.2.35",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@types/node": "^20.14.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
+    "@opennextjs/cloudflare": "^1.20.9",
     "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.41",
-    "tailwindcss": "^3.4.10",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
     "typescript": "^5.5.4",
-    "vite": "^5.4.0",
-    "wrangler": "^3.90.0"
-  },
-  "optionalDependencies": {
-    "@esbuild/win32-x64": "0.21.5",
-    "@rollup/rollup-win32-x64-msvc": "4.64.2"
+    "wrangler": "^4.125.0"
   }
 }

@@ -5,7 +5,7 @@
 
 ## 0. 修订与演进说明
 - 本文档基于"先选架构再写码"的 Vibe Coding 流程沉淀，定位为产品/需求侧基线。
-- **架构演进**：MVP 初版采用纯前端 `@imgly` 浏览器本地推理跑通流程；进入部署阶段后，应需求改为 **Cloudflare Pages Functions + remove.bg API** 同源代理（图片内存处理、不存储、密钥不暴露）。架构在跑通 MVP 后按需演进，属正常。
+- **架构演进**：MVP 初版采用纯前端 `@imgly` 浏览器本地推理；后改为 **Next.js App Router + remove.bg API** 同源代理（Route Handler 内存转发、不存储、密钥走环境变量），部署目标 **Cloudflare Pages（经 @opennextjs/cloudflare）**。架构在跑通 MVP 后按需演进，属正常。
 - 本文档以**当前部署版架构**为准。
 
 ## 1. 项目背景与目标
@@ -21,7 +21,7 @@
 ## 3. MVP 范围
 ### 3.1 必须做（P0）
 1. 上传图片：点击选择 / 拖拽，支持 PNG、JPG
-2. 去背景：服务端调用 remove.bg，经 Cloudflare Pages Functions 同源代理
+2. 去背景：服务端调用 remove.bg，经 Next.js Route Handler 同源代理
 3. 结果展示：透明 PNG 预览（棋盘格背景示意透明区域）
 4. 下载：将结果导出为 `<原名>-nobg.png`
 5. 状态与容错：处理中 loading、失败提示、重试
@@ -41,7 +41,7 @@
 flowchart TD
   A[打开网页] --> B[上传 / 拖拽图片]
   B --> C[前端 POST /api/remove-bg]
-  C --> D[Pages Function 内存转发 remove.bg]
+  C --> D[Route Handler 内存转发 remove.bg]
   D --> E{remove.bg 成功?}
   E -->|是| F[返回透明 PNG]
   E -->|否| G[返回错误 JSON]
@@ -65,11 +65,11 @@ flowchart TD
 - **可靠性**：remove.bg 不可达或额度耗尽时，返回明确错误而非白屏。
 
 ## 7. 技术架构概要（摘要）
-- 前端：React 18 + Vite 5 + TypeScript + Tailwind 3
-- 边缘函数：`functions/api/remove-bg.ts`（Pages Function，同源代理 remove.bg，内存转发）
+- 前端：Next.js 14 (App Router) + React 18 + TypeScript + Tailwind 3
+- 服务端代理：`app/api/remove-bg/route.ts`（Route Handler，同源代理 remove.bg，内存转发，密钥来自 `process.env.REMOVE_BG_API_KEY`）
 - 去背景能力：remove.bg API（免费额度 50 张 / 月）
-- 部署目标：Cloudflare Pages（静态产物 `dist/` + 边缘函数）
-- 详细技术约束见 `ARCHITECTURE.md`。
+- 部署目标：Cloudflare Pages（经 `@opennextjs/cloudflare` 适配器；构建 `npm run cf:build`、部署 `wrangler deploy`）
+- 详细技术约束见 `README.md`。
 
 ## 8. 验收标准（Definition of Done）
 - [x] 核心代码实现：上传 / 去背景调用 / 预览 / 下载 / 重试
@@ -86,11 +86,11 @@ flowchart TD
 ## 10. 里程碑（实施阶段）
 | 阶段 | 内容 | 状态 |
 |---|---|---|
-| 1 骨架 | Vite + React + TS + Tailwind | 已完成 |
-| 2 核心能力 | `useRemoveBg` hook（原 @imgly，现代理 remove.bg） | 已完成 |
-| 3 交互闭环 | Uploader / StatusBlock / ResultView | 已完成 |
-| 4 构建验证 | tsc + vite build 通过 | 已完成 |
-| 5 部署 | Cloudflare Pages + remove.bg 上线 | 待做 |
+| 1 骨架 | Next.js 14 (App Router) + React + TS + Tailwind | 已完成 |
+| 2 核心能力 | `app/api/remove-bg` Route Handler（代理 remove.bg，内存转发） | 已完成 |
+| 3 交互闭环 | page.tsx：上传/拖拽、loading、棋盘格预览、下载、重试 | 已完成 |
+| 4 构建验证 | tsc 零类型错误；next build 编译/类型检查/路由生成通过（沙箱内 .next/trace 因环境限制未落盘，真机正常） | 已完成 |
+| 5 部署 | Cloudflare Pages（opennext）+ remove.bg 上线 | 待做 |
 
 ## 11. 风险
 - remove.bg 免费额度有限（50 张 / 月），规模化需付费，且质量 / 可用性依赖第三方 API 与网络。

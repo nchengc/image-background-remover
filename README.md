@@ -1,0 +1,31 @@
+# image-background-remover
+
+零门槛在线图片去背景工具：上传图片即得到可下载的透明 PNG。
+技术栈 **Next.js 14 (App Router) + Tailwind CSS 3 + TypeScript**，去背景由 **remove.bg API** 完成，部署到 **Cloudflare Pages**（经 `@opennextjs/cloudflare`）。
+
+## 设计要点
+- 图片仅在服务端**内存中转发** remove.bg，**不写磁盘、不存储**，符合隐私预期。
+- remove.bg API Key 只存在于环境变量 / `.env.local`，不进代码、不提交仓库。
+- 前端 `/api/remove-bg` 同源调用，无 CORS 问题。
+
+## 本地运行
+```bash
+npm install
+cp .env.local.example .env.local   # 填入 REMOVE_BG_API_KEY
+npm run dev                        # http://localhost:3000
+```
+打开页面，点击/拖拽上传 PNG 或 JPG，即可得到透明 PNG 并下载（`<原名>-nobg.png`）。
+
+## 部署到 Cloudflare Pages
+1. 安装适配器与 Wrangler：`npm install`（含 devDependencies）。
+2. 在 Cloudflare 仪表盘或 `wrangler secret put REMOVE_BG_API_KEY` 配置密钥。
+3. 构建并部署：
+   ```bash
+   npm run cf:build     # opennextjs-cloudflare build
+   npm run cf:deploy    # wrangler deploy
+   ```
+   或于 Cloudflare Pages 后台连接 GitHub 仓库，构建命令填 `npm run cf:build`、输出目录填 `.open-next/assets`（函数入口 `.open-next/worker.js`）。
+
+## 说明
+- remove.bg 免费额度 50 张/月，规模化需付费。
+- 未配置 Key 或 remove.bg 调用失败时，前端会显示明确错误而非白屏。

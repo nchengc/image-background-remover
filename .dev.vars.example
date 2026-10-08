@@ -1,5 +1,0 @@
-# 本地开发用的环境变量（wrangler pages dev 会读取同目录下的 .dev.vars）
-# 1) 复制本文件为 .dev.vars：cp .dev.vars.example .dev.vars
-# 2) 把下面的值换成你在 https://remove.bg/api 申请的 API Key
-# 注意：.dev.vars 已被 .gitignore 忽略，不会提交到仓库
-REMOVE_BG_API_KEY=your_removebg_api_key_here

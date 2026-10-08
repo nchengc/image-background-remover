@@ -1,6 +1,10 @@
-node_modules
-dist
-.dev.vars
-.env
-*.log
+/node_modules
+/.next
+/out
+/.open-next
+/.wrangler
+.env*.local
+!.env.local.example
+next-env.d.ts
+*.tsbuildinfo
 .DS_Store
