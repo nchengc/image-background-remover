@@ -21,7 +21,7 @@ npm run dev                        # http://localhost:3000
 
 | 项 | 值 |
 |---|---|
-| 构建命令 | `npx @cloudflare/next-on-pages@1` |
+| 构建命令 | `npm run pages:build`（内部执行本地 `next-on-pages`） |
 | 构建输出目录 | `.vercel/output/static` |
 | 生产分支 | `main` |
 
