@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  scroll-behavior: smooth;
+}
+
 /* 透明区域棋盘格示意（用于预览去背景结果） */
 .checkerboard {
   background-image:
@@ -12,4 +16,31 @@
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0;
   background-color: #f1f5f9;
+}
+
+/* 小尺寸棋盘格（缩略图用，颗粒更细腻） */
+.checkerboard-sm {
+  background-image:
+    linear-gradient(45deg, #cbd5e1 25%, transparent 25%),
+    linear-gradient(-45deg, #cbd5e1 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #cbd5e1 75%),
+    linear-gradient(-45deg, transparent 75%, #cbd5e1 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+  background-color: #f8fafc;
+}
+
+/* 文字渐变 */
+.text-gradient {
+  @apply bg-gradient-to-r from-brand-600 via-violet-600 to-fuchsia-500 bg-clip-text text-transparent;
+}
+
+/* 玻璃拟态卡片 */
+.glass {
+  @apply border border-white/60 bg-white/70 shadow-soft backdrop-blur-xl;
+}
+
+/* 区块标题 */
+.section-kicker {
+  @apply mb-3 inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-3 py-1 text-xs font-semibold tracking-wide text-brand-600;
 }
