@@ -1,3 +1,5 @@
+import JsonLd from "./JsonLd";
+
 const FAQS = [
   {
     q: "我的图片会被保存吗？",
@@ -25,6 +27,19 @@ export default function Faq() {
   return (
     <section id="faq" className="scroll-mt-20 bg-slate-50/80 px-4 py-20 sm:px-6">
       <div className="mx-auto max-w-3xl">
+        {/* FAQPage 结构化数据：有机会在搜索结果里直接展开问答 */}
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: FAQS.map((f) => ({
+              "@type": "Question",
+              name: f.q,
+              acceptedAnswer: { "@type": "Answer", text: f.a },
+            })),
+          }}
+        />
+
         <div className="mb-10 text-center">
           <span className="section-kicker">
             <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />

@@ -1,0 +1,7 @@
+# BgRemover · 图片去背景
+# 允许所有合规爬虫抓取全站
+User-agent: *
+Allow: /
+
+# 站点地图（换成自定义域名后记得同步改这里的绝对地址）
+Sitemap: https://image-background-remover-259.pages.dev/sitemap.xml

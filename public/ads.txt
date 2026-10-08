@@ -1,0 +1,11 @@
+# ads.txt —— Google AdSense 授权发布商声明文件
+# 文档：https://developers.google.com/authorized-buyers/rtb/ads-txt
+#
+# 启用步骤（通过 AdSense 审核后再操作）：
+#   1. 登录 AdSense →「广告」→ 右上角账号信息，复制形如 pub-1234567890123456 的发布商 ID
+#   2. 把下面示例行的 pub-0000000000000000 替换为你的真实发布商 ID
+#   3. 删除该行行首的 "# "，重新部署即可
+#
+# 未拿到发布商 ID 前请保持全部注释状态，避免填写错误 ID 影响审核。
+#
+# google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0

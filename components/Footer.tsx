@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LogoMark } from "./Header";
 
 export default function Footer() {
@@ -13,6 +14,25 @@ export default function Footer() {
             在线图片去背景工具。图片仅在内存中处理，不落盘、不存储。
           </p>
         </div>
+
+        {/* 政策与关于页入口：AdSense 审核会检查站点是否提供这些内容 */}
+        <nav
+          aria-label="政策与关于"
+          className="grid grid-cols-2 gap-x-12 gap-y-2 text-center text-sm sm:text-left"
+        >
+          <Link href="/about" className="text-slate-500 transition hover:text-brand-600">
+            关于我们
+          </Link>
+          <Link href="/contact" className="text-slate-500 transition hover:text-brand-600">
+            联系我们
+          </Link>
+          <Link href="/privacy" className="text-slate-500 transition hover:text-brand-600">
+            隐私政策
+          </Link>
+          <Link href="/terms" className="text-slate-500 transition hover:text-brand-600">
+            使用条款
+          </Link>
+        </nav>
 
         <nav className="grid grid-cols-2 gap-x-12 gap-y-2 text-center text-sm sm:text-left">
           <a href="#tool" className="text-slate-500 transition hover:text-brand-600">在线工具</a>

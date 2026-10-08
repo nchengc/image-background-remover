@@ -53,7 +53,11 @@ function CompareSlider({
         {/* 左：原图 */}
         <img
           src={before}
-          alt={`${name} 原图`}
+          alt={`${name} 原图，带背景`}
+          width={600}
+          height={600}
+          loading="lazy"
+          decoding="async"
           draggable={false}
           className="absolute inset-0 h-full w-full object-cover"
         />
@@ -61,7 +65,11 @@ function CompareSlider({
         <div className="checkerboard absolute inset-0">
           <img
             src={after}
-            alt={`${name} 去背景结果`}
+            alt={`${name} 去背景后的透明 PNG`}
+            width={500}
+            height={500}
+            loading="lazy"
+            decoding="async"
             draggable={false}
             className="h-full w-full object-cover"
             style={{ clipPath: `inset(0 0 0 ${pos}%)` }}
