@@ -1,7 +1,9 @@
 # image-background-remover
 
 零门槛在线图片去背景工具：上传图片即得到可下载的透明 PNG。
-技术栈 **Next.js 14 (App Router) + Tailwind CSS 3 + TypeScript**，去背景由 **remove.bg API** 完成，部署到 **Cloudflare Pages**（经 `@cloudflare/next-on-pages`，原生 GitHub 集成）。
+技术栈 **Next.js 14 (App Router) + Tailwind CSS 3 + TypeScript**，去背景由 **remove.bg API** 完成，部署到 **Cloudflare Pages**（原生 GitHub 集成）。
+
+架构：前端由 Next.js **静态导出**到 `out/`；去背景代理是一个独立的 **Pages Function**（`functions/api/remove-bg.ts`），同源调用，密钥只存在于服务端。
 
 ## 设计要点
 - 图片仅在服务端**内存中转发** remove.bg，**不写磁盘、不存储**，符合隐私预期。
@@ -21,15 +23,13 @@ npm run dev                        # http://localhost:3000
 
 | 项 | 值 |
 |---|---|
-| 构建命令 | `npm run pages:build`（内部执行本地 `next-on-pages`） |
-| 构建输出目录 | `.vercel/output/static` |
+| 构建命令 | `npm run build` |
+| 构建输出目录 | `out` |
 | 生产分支 | `main` |
 
-每次 `git push` 到 `main` 会自动触发构建部署。API 路由已声明 `runtime = "edge"`，符合 next-on-pages 要求。
+每次 `git push` 到 `main` 会自动触发构建部署。`functions/` 目录会被 Cloudflare 自动识别为 Pages Functions，无需额外配置。
 
 环境变量需在 Pages 项目「设置 → 变量和机密」中配置 `REMOVE_BG_API_KEY`。
-
-> 注意：`@cloudflare/next-on-pages` 固定为 `1.13.5`（更高版本要求 Next ≥14.3，与本项目 Next 14.2 不兼容），请勿随意升级。
 
 ## 说明
 - remove.bg 免费额度 50 张/月，规模化需付费。
