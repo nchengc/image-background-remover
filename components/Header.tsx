@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+import { AuthButton } from "@/components/AuthButton";
 
 /** 站点 Logo 标记（内联 SVG，无需资源文件） */
 export function LogoMark({ className = "h-8 w-8" }: { className?: string }) {
@@ -68,12 +69,15 @@ export default function Header({ variant = "home" }: { variant?: "home" | "scena
           ))}
         </nav>
 
-        <a
-          href="#tool"
-          className="rounded-xl bg-gradient-to-r from-brand-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-glow transition hover:opacity-90 active:scale-95"
-        >
-          立即去背景
-        </a>
+        <div className="flex items-center gap-2">
+          <AuthButton />
+          <a
+            href="#tool"
+            className="rounded-xl bg-gradient-to-r from-brand-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-glow transition hover:opacity-90 active:scale-95"
+          >
+            立即去背景
+          </a>
+        </div>
       </div>
     </header>
   );

@@ -28,7 +28,11 @@ no vendor lock-in.
   (`<original>-nobg.png`).
 - **Privacy by design** — images are forwarded to remove.bg **in memory only**, never written to
   disk or persisted. This is stated explicitly in the UI and the [privacy policy](https://image-background-remover-259.pages.dev/privacy).
-- **Zero registration** — the tool works immediately, no sign-up wall.
+- **Zero registration** — the tool works immediately, no sign-up wall (anonymous users get a
+  small free allowance).
+- **Optional Google sign-in** — sign in to claim a larger monthly free quota. The login UI is wired
+  via [Supabase](https://supabase.com) (Auth + Postgres); server-side per-user quota enforcement is
+  the next step.
 - **Scenario-tuned pages** — dedicated guides for the most common intents, each with its own
   industry rules and FAQ:
   - [ID photo background swap](https://image-background-remover-259.pages.dev/id-photo)
