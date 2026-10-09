@@ -191,7 +191,7 @@ Google 会惩罚「仅关键词不同、内容互相复制」的页面矩阵。�
 - [ ] 换自定义域名，同步改 `robots.txt` / `sitemap.xml` 里的域名
 - [ ] 网址检查逐个请求编入索引（首页 + 5 个场景页 + 4 个政策页）
 - [ ] 配置 `NEXT_PUBLIC_CONTACT_EMAIL`
-- [ ] 完善 GitHub README（英文）
+- [x] 完善 GitHub README（英文）
 - [ ] 补 Keyword Planner 数据，回填第二节表格
 
 **本阶段成功标准：10 个页面全部「已编入索引」。不考核排名。**
@@ -256,3 +256,4 @@ Google 会惩罚「仅关键词不同、内容互相复制」的页面矩阵。�
 - 首页确认新增 `HowTo` 结构化数据，且向每个场景页各输出 2 条内链
 - 页脚全站输出 5 个场景链接，孤儿页数为 0
 - `sitemap.xml` 已同步至 10 条 URL
+- `README.md` 升级为英文，定位为「隐私优先的 remove.bg 开源替代实现」，支撑外链/E-E-A-T 优先级 #1（commit 43397fa2 已推送 main）
