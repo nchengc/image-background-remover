@@ -382,6 +382,39 @@ export const SCENARIOS: Scenario[] = [
   },
 ];
 
+/**
+ * 场景页「效果示例」对比图映射。
+ * 复用首页真实去背景输出；signature 为本地绘制的透明签名示意（不消耗 remove.bg 额度）。
+ * before/after 均为已存在或可生成的静态资源，alt 描述场景化内容以助图片搜索与无障碍。
+ */
+export const SCENARIO_DEMO: Record<string, { before: string; after: string; alt: string }> = {
+  "id-photo": {
+    before: "/demo/portrait-before.png",
+    after: "/demo/portrait-after.png",
+    alt: "证件照去背景前后对比：左侧为带背景的原图，右侧为抠出人像后的透明 PNG",
+  },
+  "white-background": {
+    before: "/demo/object-before.png",
+    after: "/demo/object-after.png",
+    alt: "图片换白底前后对比：物体从原背景被抠出为透明 PNG",
+  },
+  "product-photo": {
+    before: "/demo/product-before.png",
+    after: "/demo/product-after.png",
+    alt: "商品图抠图前后对比：商品从杂乱背景被抠出为透明 PNG",
+  },
+  "logo-transparent": {
+    before: "/demo/object-before.png",
+    after: "/demo/object-after.png",
+    alt: "Logo 去背景示例：图形从原背景被抠出为透明 PNG（示意）",
+  },
+  "signature": {
+    before: "/demo/signature-before.png",
+    after: "/demo/signature-after.png",
+    alt: "手写签名转透明前后对比：左侧为白底签名，右侧为透明底签名",
+  },
+};
+
 /** 按 slug 取场景，供页面与站点地图共用 */
 export function getScenario(slug: string): Scenario | undefined {
   return SCENARIOS.find((s) => s.slug === slug);

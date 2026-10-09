@@ -4,7 +4,7 @@ import Header from "./Header";
 import Footer from "./Footer";
 import UploadTool from "./UploadTool";
 import JsonLd from "./JsonLd";
-import { SCENARIOS, type Scenario } from "@/lib/scenarios";
+import { SCENARIOS, SCENARIO_DEMO, type Scenario } from "@/lib/scenarios";
 import { SITE, absUrl } from "@/lib/site";
 
 /**
@@ -17,6 +17,7 @@ import { SITE, absUrl } from "@/lib/site";
 export default function ScenarioPage({ scenario }: { scenario: Scenario }) {
   const url = absUrl(`/${scenario.slug}`);
   const related = SCENARIOS.filter((s) => s.slug !== scenario.slug);
+  const demo = SCENARIO_DEMO[scenario.slug];
 
   return (
     <>
@@ -99,6 +100,43 @@ export default function ScenarioPage({ scenario }: { scenario: Scenario }) {
             </p>
           ))}
         </section>
+
+        {/* 效果示例：场景相关的前后对比，强化内容厚度、E-E-A-T 与图片搜索流量 */}
+        {demo && (
+          <section className="mx-auto max-w-3xl px-4 pb-10 sm:px-6">
+            <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+              效果示例
+            </h2>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <figure className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <div className="checkerboard aspect-[4/3] p-3">
+                  <img
+                    src={demo.before}
+                    alt={demo.alt}
+                    loading="lazy"
+                    className="mx-auto h-full w-full object-contain"
+                  />
+                </div>
+                <figcaption className="border-t border-slate-100 px-3 py-2 text-center text-xs text-slate-500">
+                  处理前
+                </figcaption>
+              </figure>
+              <figure className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <div className="checkerboard aspect-[4/3] p-3">
+                  <img
+                    src={demo.after}
+                    alt={demo.alt}
+                    loading="lazy"
+                    className="mx-auto h-full w-full object-contain"
+                  />
+                </div>
+                <figcaption className="border-t border-slate-100 px-3 py-2 text-center text-xs text-slate-500">
+                  处理后（透明 PNG）
+                </figcaption>
+              </figure>
+            </div>
+          </section>
+        )}
 
         {/* 工具本体：复用首页同一组件，保证功能一致性 */}
         <UploadTool />
