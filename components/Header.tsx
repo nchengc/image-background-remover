@@ -25,12 +25,24 @@ export function LogoMark({ className = "h-8 w-8" }: { className?: string }) {
 
 const NAV = [
   { href: "#tool", label: "在线工具" },
+  { href: "#usecases", label: "使用场景" },
   { href: "#showcase", label: "效果展示" },
   { href: "#features", label: "服务能力" },
   { href: "#faq", label: "常见问题" },
 ];
 
-export default function Header() {
+/**
+ * 场景落地页用的导航：这些页面上不存在首页的锚点区块，
+ * 若沿用首页锚点会产生无效链接，因此改为指向真实页面的入口。
+ */
+const NAV_SCENARIO = [
+  { href: "/#tool", label: "在线工具" },
+  { href: "/#usecases", label: "全部场景" },
+  { href: "/#faq", label: "常见问题" },
+];
+
+export default function Header({ variant = "home" }: { variant?: "home" | "scenario" }) {
+  const items = variant === "scenario" ? NAV_SCENARIO : NAV;
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -45,7 +57,7 @@ export default function Header() {
         </a>
 
         <nav className="hidden items-center gap-1 md:flex">
-          {NAV.map((n) => (
+          {items.map((n) => (
             <a
               key={n.href}
               href={n.href}

@@ -39,6 +39,11 @@ export function absUrl(path: string): string {
 /** 需要被搜索引擎收录的页面清单（同时用于 sitemap 与页脚） */
 export const PAGES = [
   { path: "/", title: "首页 · 在线图片去背景", priority: "1.0", changefreq: "weekly" },
+  { path: "/id-photo", title: "证件照换底色", priority: "0.8", changefreq: "monthly" },
+  { path: "/white-background", title: "图片换白底", priority: "0.8", changefreq: "monthly" },
+  { path: "/product-photo", title: "商品图抠图", priority: "0.8", changefreq: "monthly" },
+  { path: "/logo-transparent", title: "Logo 转透明背景", priority: "0.7", changefreq: "monthly" },
+  { path: "/signature", title: "签名抠图", priority: "0.7", changefreq: "monthly" },
   { path: "/about", title: "关于我们", priority: "0.6", changefreq: "monthly" },
   { path: "/privacy", title: "隐私政策", priority: "0.5", changefreq: "yearly" },
   { path: "/terms", title: "使用条款", priority: "0.5", changefreq: "yearly" },

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LogoMark } from "./Header";
+import { SCENARIOS } from "@/lib/scenarios";
 
 export default function Footer() {
   return (
@@ -34,11 +35,23 @@ export default function Footer() {
           </Link>
         </nav>
 
-        <nav className="grid grid-cols-2 gap-x-12 gap-y-2 text-center text-sm sm:text-left">
-          <a href="#tool" className="text-slate-500 transition hover:text-brand-600">在线工具</a>
-          <a href="#showcase" className="text-slate-500 transition hover:text-brand-600">效果展示</a>
-          <a href="#features" className="text-slate-500 transition hover:text-brand-600">服务能力</a>
-          <a href="#faq" className="text-slate-500 transition hover:text-brand-600">常见问题</a>
+        {/* 场景长尾页入口：全站内链，加快新页面被抓取与索引 */}
+        <nav
+          aria-label="使用场景"
+          className="grid grid-cols-2 gap-x-12 gap-y-2 text-center text-sm sm:text-left"
+        >
+          {SCENARIOS.map((s) => (
+            <Link
+              key={s.slug}
+              href={`/${s.slug}`}
+              className="text-slate-500 transition hover:text-brand-600"
+            >
+              {s.crumb}
+            </Link>
+          ))}
+          <Link href="/" className="text-slate-500 transition hover:text-brand-600">
+            通用去背景
+          </Link>
         </nav>
 
         <div className="text-center text-xs leading-relaxed text-slate-400 sm:text-right">

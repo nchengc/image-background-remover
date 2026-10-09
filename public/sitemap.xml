@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- 换成自定义域名后，请把下面所有 loc 里的域名同步替换 -->
+  <!-- 换成自定义域名后，请把下面所有 loc 里的域名同步替换（静态文件读不到环境变量） -->
   <url>
     <loc>https://image-background-remover-259.pages.dev/</loc>
     <lastmod>2026-10-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://image-background-remover-259.pages.dev/id-photo</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://image-background-remover-259.pages.dev/white-background</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://image-background-remover-259.pages.dev/product-photo</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://image-background-remover-259.pages.dev/logo-transparent</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://image-background-remover-259.pages.dev/signature</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://image-background-remover-259.pages.dev/about</loc>
