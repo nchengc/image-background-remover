@@ -1,36 +1,116 @@
 # image-background-remover
 
-零门槛在线图片去背景工具：上传图片即得到可下载的透明 PNG。
-技术栈 **Next.js 14 (App Router) + Tailwind CSS 3 + TypeScript**，去背景由 **remove.bg API** 完成，部署到 **Cloudflare Pages**（原生 GitHub 集成）。
+**A privacy-first, self-hostable background remover — an open-source alternative to remove.bg.**
 
-架构：前端由 Next.js **静态导出**到 `out/`；去背景代理是一个独立的 **Pages Function**（`functions/api/remove-bg.ts`），同源调用，密钥只存在于服务端。
+Upload any image and get a transparent PNG in seconds. No account, no upload stored on disk.
+Built with **Next.js 14 (App Router) + Tailwind CSS 3 + TypeScript**, powered by the
+[remove.bg](https://remove.bg) API on the server side, and deployed to **Cloudflare Pages**.
 
-## 设计要点
-- 图片仅在服务端**内存中转发** remove.bg，**不写磁盘、不存储**，符合隐私预期。
-- remove.bg API Key 只存在于环境变量 / `.env.local`，不进代码、不提交仓库。
-- 前端 `/api/remove-bg` 同源调用，无 CORS 问题。
+> 🌐 Live demo: https://image-background-remover-259.pages.dev
+> 📦 Source: https://github.com/nchengc/image-background-remover
 
-## 本地运行
+---
+
+## Why this exists
+
+Most "free" background removers either require an account, store your uploads on their servers,
+or lock output quality behind a paywall. This project is a minimal, transparent, and
+**self-hostable** implementation you can run yourself in minutes — the entire processing
+pipeline is open and auditable.
+
+It is positioned as a lightweight, privacy-respecting **open-source alternative to remove.bg**:
+same core capability, but you own the deployment, the data never touches our disk, and there is
+no vendor lock-in.
+
+## Features
+
+- **One-click background removal** — drop a PNG/JPG and download a transparent PNG
+  (`<original>-nobg.png`).
+- **Privacy by design** — images are forwarded to remove.bg **in memory only**, never written to
+  disk or persisted. This is stated explicitly in the UI and the [privacy policy](https://image-background-remover-259.pages.dev/privacy).
+- **Zero registration** — the tool works immediately, no sign-up wall.
+- **Scenario-tuned pages** — dedicated guides for the most common intents, each with its own
+  industry rules and FAQ:
+  - [ID photo background swap](https://image-background-remover-259.pages.dev/id-photo)
+  - [White background product shots](https://image-background-remover-259.pages.dev/white-background)
+  - [E-commerce product cutouts](https://image-background-remover-259.pages.dev/product-photo)
+  - [Logo to transparent background](https://image-background-remover-259.pages.dev/logo-transparent)
+  - [Signature cutout](https://image-background-remover-259.pages.dev/signature)
+- **SEO-ready** — semantic HTML, JSON-LD structured data (WebSite / WebApplication / HowTo /
+  BreadcrumbList / FAQPage), sitemap, and robots.txt out of the box.
+- **Edge-deployed** — fully static front end on Cloudflare's CDN; the API proxy runs as a
+  Cloudflare Pages Function.
+
+## How it works
+
+```
+ Browser (Next.js static export)
+        │  POST /api/remove-bg  (multipart image, same-origin)
+        ▼
+ Cloudflare Pages Function  functions/api/remove-bg.ts
+        │  - reads REMOVE_BG_API_KEY from env (server-only)
+        │  - forwards image IN MEMORY to remove.bg (never written to disk)
+        ▼
+ remove.bg API  →  transparent PNG  →  streamed back to browser
+```
+
+Key design choices:
+
+- The front end is **statically exported** to `out/` — no server render wait, instant loads.
+- The background-removal proxy is a **separate Pages Function** (`functions/api/remove-bg.ts`),
+  called same-origin so there are no CORS issues and the API key never reaches the client.
+- The remove.bg API key lives **only** in environment variables / `.env.local` — never in code,
+  never committed.
+
+## Local development
+
 ```bash
 npm install
-cp .env.local.example .env.local   # 填入 REMOVE_BG_API_KEY
+cp .env.local.example .env.local   # then fill in REMOVE_BG_API_KEY
 npm run dev                        # http://localhost:3000
 ```
-打开页面，点击/拖拽上传 PNG 或 JPG，即可得到透明 PNG 并下载（`<原名>-nobg.png`）。
 
-## 部署到 Cloudflare Pages（原生 GitHub 集成，已启用）
-在 Cloudflare 仪表盘完成一次 GitHub 授权后，Pages 项目已绑定 `nchengc/image-background-remover`，构建配置：
+Open the page, drag-and-drop or click to upload a PNG/JPG, and the transparent result downloads
+automatically.
 
-| 项 | 值 |
+## Deploy to Cloudflare Pages (GitHub integration)
+
+After authorizing GitHub once in the Cloudflare dashboard, the Pages project binds to
+`nchengc/image-background-remover`. Build settings:
+
+| Setting | Value |
 |---|---|
-| 构建命令 | `npm run build` |
-| 构建输出目录 | `out` |
-| 生产分支 | `main` |
+| Build command | `npm run build` |
+| Build output directory | `out` |
+| Production branch | `main` |
 
-每次 `git push` 到 `main` 会自动触发构建部署。`functions/` 目录会被 Cloudflare 自动识别为 Pages Functions，无需额外配置。
+Every `git push` to `main` triggers a fresh build and deploy. The `functions/` directory is
+auto-detected by Cloudflare as Pages Functions — no extra configuration needed.
 
-环境变量需在 Pages 项目「设置 → 变量和机密」中配置 `REMOVE_BG_API_KEY`。
+Set the environment variable `REMOVE_BG_API_KEY` in the Pages project
+(**Settings → Variables and Secrets**).
 
-## 说明
-- remove.bg 免费额度 50 张/月，规模化需付费。
-- 未配置 Key 或 remove.bg 调用失败时，前端会显示明确错误而非白屏。
+## Limitations (kept honest)
+
+- The free remove.bg tier allows **~50 images / month**; scaling requires a paid plan.
+- Free-tier output is downscaled by remove.bg (roughly ≤ 0.25 MP). This is a supplier limit,
+  not a code limitation.
+- If the key is missing or remove.bg is unreachable, the UI shows a clear error instead of a
+  blank screen.
+
+## Roadmap
+
+- [ ] Self-hostable model option (on-device / open-weight) to remove the remove.bg dependency
+- [ ] Batch processing
+- [ ] More scenario pages (stamps, pets, icons, packaging) following the
+      [doorway-page-safe](docs/SEO-STRATEGY.md) content rules
+- [ ] WebP/AVIF output for smaller assets
+
+## Contributing
+
+PRs and issues are welcome — especially around the privacy model, alternative inference
+backends, and documentation. Please keep the "no image stored on disk" guarantee intact.
+
+## License
+
+MIT — see the repository for details.
